@@ -6,6 +6,9 @@ from lab_05.config import (
     DATA_SRC_LANG,
     DATA_TGT_LANG,
 )
+from dotenv import load_dotenv
+
+load_dotenv()
 
 
 def load_translation_subset(
