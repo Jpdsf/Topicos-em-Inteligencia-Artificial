@@ -13,6 +13,7 @@ from lab_05.config import (
     TRAIN_EPOCHS,
     TRAIN_LR,
     TOKENIZER_PAD_ID,
+    TRAIN_BATCH_SIZE
 )
 
 
@@ -43,30 +44,37 @@ class Trainer:
         tgt_input_ids: list[list[int]],
         tgt_target_ids: list[list[int]],
     ) -> list[float]:
-
-        src = self._to_tensor(src_ids)
-        tgt_input = self._to_tensor(tgt_input_ids)
-        tgt_target = self._to_tensor(tgt_target_ids)
-
         loss_history = []
 
         self.model.train()
         for epoch in range(1, TRAIN_EPOCHS + 1):
-            self.optimizer.zero_grad()
+            epoch_loss = 0.0
+            num_batches = 0
 
-            output = self.model(src, tgt_input)
+            for i in range(0, len(src_ids), TRAIN_BATCH_SIZE):
+                src = self._to_tensor(src_ids[i:i + TRAIN_BATCH_SIZE])
+                tgt_input = self._to_tensor(
+                    tgt_input_ids[i:i + TRAIN_BATCH_SIZE])
+                tgt_target = self._to_tensor(
+                    tgt_target_ids[i:i + TRAIN_BATCH_SIZE])
 
-            batch_size, seq_len, vocab_size = output.shape
-            output_flat = output.reshape(batch_size * seq_len, vocab_size)
-            target_flat = tgt_target.reshape(batch_size * seq_len)
+                self.optimizer.zero_grad()
+                output = self.model(src, tgt_input)
 
-            loss = self.criterion(output_flat, target_flat)
+                batch_size, seq_len, vocab_size = output.shape
+                loss = self.criterion(
+                    output.reshape(batch_size * seq_len, vocab_size),
+                    tgt_target.reshape(batch_size * seq_len),
+                )
+                loss.backward()
+                nn.utils.clip_grad_norm_(self.model.parameters(), max_norm=1.0)
+                self.optimizer.step()
 
-            loss.backward()
-            self.optimizer.step()
+                epoch_loss += loss.item()
+                num_batches += 1
 
-            loss_val = loss.item()
-            loss_history.append(loss_val)
-            print(f"  Epoch {epoch:>3}/{TRAIN_EPOCHS} | Loss: {loss_val:.4f}")
+            avg_loss = epoch_loss / num_batches
+            loss_history.append(avg_loss)
+            print(f"  Epoch {epoch:>3}/{TRAIN_EPOCHS} | Loss: {avg_loss:.4f}")
 
         return loss_history
