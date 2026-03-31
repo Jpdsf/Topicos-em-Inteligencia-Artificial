@@ -7,7 +7,7 @@
 ## Estrutura do Projeto
 
 ```
-lab6-tokenizer/
+lab6/
 │
 ├── main.py          # Ponto de entrada: executa todas as tarefas
 │
